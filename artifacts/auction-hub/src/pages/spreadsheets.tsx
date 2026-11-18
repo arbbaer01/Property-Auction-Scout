@@ -19,9 +19,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export default function SpreadsheetsPage() {
-  const { data, refetch, isLoading } = useListSpreadsheets({
-    query: { queryKey: ["/api/spreadsheets"] },
-  });
+  const { data, refetch, isLoading } = useListSpreadsheets();
+
   const downloadMutation = useDownloadSpreadsheet();
   const { toast } = useToast();
 
