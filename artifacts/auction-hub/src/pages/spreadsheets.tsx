@@ -47,7 +47,7 @@ export default function SpreadsheetsPage() {
         onError: (err) => {
           toast({
             title: "Download failed",
-            description: err.error,
+            description: err.message,
             variant: "destructive",
           });
         },
