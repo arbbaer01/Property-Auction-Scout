@@ -43,12 +43,11 @@ export default function AuctionDetail() {
 
   // Only consider active if explicitly active or valid session exists with active !== false
   const isMonitoringActive = Boolean(
-    monitorStatus?.active ||
+    (monitorStatus as any)?.active ||
       (monitorStatus?.auctionId &&
-        monitorStatus.active !== false &&
+        (monitorStatus as any)?.active !== false &&
         (monitorStatus.currentBid != null || monitorStatus.bidCount != null)),
   );
-
   const handleToggleMonitor = () => {
     if (isMonitoringActive) {
       stopMonitor.mutate({ auctionId });
