@@ -1,0 +1,985 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Real Estate Auction Hub API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Bid4Assets authentication
+  - name: auctions
+    description: Live and upcoming auction listings
+  - name: properties
+    description: Property records from spreadsheets
+  - name: spreadsheets
+    description: Pre and post-auction spreadsheet management
+  - name: spider
+    description: Web crawler control
+  - name: monitoring
+    description: Live auction monitoring
+  - name: excess-proceeds
+    description: Excess proceeds from post-auction results
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login to Bid4Assets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthStatus"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout from Bid4Assets
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthStatus"
+
+  /auth/status:
+    get:
+      operationId: getAuthStatus
+      tags: [auth]
+      summary: Get current authentication status
+      responses:
+        "200":
+          description: Auth status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthStatus"
+
+  /auctions:
+    get:
+      operationId: listAuctions
+      tags: [auctions]
+      summary: List auctions with optional filters
+      parameters:
+        - name: state
+          in: query
+          schema:
+            type: string
+          description: Filter by state abbreviation (e.g. NV, CA, AZ)
+        - name: county
+          in: query
+          schema:
+            type: string
+          description: Filter by county name
+        - name: min_bid
+          in: query
+          schema:
+            type: number
+          description: Minimum starting bid amount
+        - name: max_bid
+          in: query
+          schema:
+            type: number
+          description: Maximum starting bid amount
+        - name: has_reserve
+          in: query
+          schema:
+            type: boolean
+          description: Filter by whether auction has a reserve
+        - name: days_left_max
+          in: query
+          schema:
+            type: integer
+          description: Maximum days remaining in auction
+        - name: auction_type
+          in: query
+          schema:
+            type: string
+            enum: [pre_auction, live, ended]
+          description: Filter by auction phase
+        - name: property_type
+          in: query
+          schema:
+            type: string
+            enum: [land, improved, all]
+          description: Filter by property type
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of auctions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuctionListResponse"
+
+  /auctions/{id}:
+    get:
+      operationId: getAuction
+      tags: [auctions]
+      summary: Get a single auction by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Auction detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Auction"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auctions/summary:
+    get:
+      operationId: getAuctionSummary
+      tags: [auctions]
+      summary: Get auction stats summary (counts by state, type, price tier)
+      responses:
+        "200":
+          description: Auction summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuctionSummary"
+
+  /properties:
+    get:
+      operationId: listProperties
+      tags: [properties]
+      summary: List properties from spreadsheets with filters
+      parameters:
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: county
+          in: query
+          schema:
+            type: string
+        - name: parcel_number
+          in: query
+          schema:
+            type: string
+        - name: spreadsheet_type
+          in: query
+          schema:
+            type: string
+            enum: [pre_auction, post_auction, all]
+        - name: min_excess_proceeds
+          in: query
+          schema:
+            type: number
+        - name: max_excess_proceeds
+          in: query
+          schema:
+            type: number
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of properties
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyListResponse"
+
+  /properties/{id}:
+    get:
+      operationId: getProperty
+      tags: [properties]
+      summary: Get a single property record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Property detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Property"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /spreadsheets:
+    get:
+      operationId: listSpreadsheets
+      tags: [spreadsheets]
+      summary: List available spreadsheets (pre and post auction)
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [pre_auction, post_auction, all]
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of spreadsheets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpreadsheetListResponse"
+
+  /spreadsheets/download:
+    post:
+      operationId: downloadSpreadsheet
+      tags: [spreadsheets]
+      summary: Trigger download and import of a spreadsheet from Bid4Assets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpreadsheetDownloadInput"
+      responses:
+        "202":
+          description: Download started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpreadsheetJob"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /spreadsheets/{id}:
+    get:
+      operationId: getSpreadsheet
+      tags: [spreadsheets]
+      summary: Get a spreadsheet record by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Spreadsheet record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Spreadsheet"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /spider/start:
+    post:
+      operationId: startSpider
+      tags: [spider]
+      summary: Start a web crawler spider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpiderStartInput"
+      responses:
+        "202":
+          description: Spider started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpiderStatus"
+        "409":
+          description: Spider already running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /spider/stop:
+    post:
+      operationId: stopSpider
+      tags: [spider]
+      summary: Stop the currently running spider
+      responses:
+        "200":
+          description: Spider stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpiderStatus"
+
+  /spider/status:
+    get:
+      operationId: getSpiderStatus
+      tags: [spider]
+      summary: Get current spider status and progress
+      responses:
+        "200":
+          description: Spider status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpiderStatus"
+
+  /monitoring:
+    get:
+      operationId: listMonitoring
+      tags: [monitoring]
+      summary: List all currently monitored auctions
+      responses:
+        "200":
+          description: Monitored auctions list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringListResponse"
+
+  /monitoring/{auctionId}:
+    post:
+      operationId: startMonitoring
+      tags: [monitoring]
+      summary: Start monitoring a live auction
+      parameters:
+        - name: auctionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Monitoring started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringSession"
+    delete:
+      operationId: stopMonitoring
+      tags: [monitoring]
+      summary: Stop monitoring an auction
+      parameters:
+        - name: auctionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Monitoring stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitoringSession"
+
+  /monitoring/{auctionId}/status:
+    get:
+      operationId: getMonitoringStatus
+      tags: [monitoring]
+      summary: Get real-time status of a monitored auction
+      parameters:
+        - name: auctionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Live auction status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveAuctionStatus"
+        "404":
+          description: Not monitored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /excess-proceeds:
+    get:
+      operationId: listExcessProceeds
+      tags: [excess-proceeds]
+      summary: List excess proceeds records from post-auction results
+      parameters:
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: county
+          in: query
+          schema:
+            type: string
+        - name: parcel_number
+          in: query
+          schema:
+            type: string
+        - name: min_amount
+          in: query
+          schema:
+            type: number
+        - name: max_amount
+          in: query
+          schema:
+            type: number
+        - name: claimed
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of excess proceeds records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcessProceedsListResponse"
+
+  /excess-proceeds/summary:
+    get:
+      operationId: getExcessProceedsSummary
+      tags: [excess-proceeds]
+      summary: Get summary stats for excess proceeds (total, by state, unclaimed amount)
+      responses:
+        "200":
+          description: Excess proceeds summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExcessProceedsSummary"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    LoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    AuthStatus:
+      type: object
+      required: [loggedIn]
+      properties:
+        loggedIn:
+          type: boolean
+        username:
+          type: ["string", "null"]
+        lastLoginAt:
+          type: ["string", "null"]
+
+    Auction:
+      type: object
+      required: [id, title, state, county, currentBid, startingBid, auctionType, propertyType, createdAt]
+      properties:
+        id:
+          type: integer
+        externalId:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        state:
+          type: string
+        county:
+          type: string
+        parcelNumber:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        propertyType:
+          type: string
+          enum: [land, improved, unknown]
+        auctionType:
+          type: string
+          enum: [pre_auction, live, ended]
+        startingBid:
+          type: number
+        currentBid:
+          type: number
+        reserveAmount:
+          type: ["number", "null"]
+        hasReserve:
+          type: boolean
+        reserveMet:
+          type: ["boolean", "null"]
+        auctionStartAt:
+          type: ["string", "null"]
+        auctionEndAt:
+          type: ["string", "null"]
+        daysLeft:
+          type: ["integer", "null"]
+        hoursLeft:
+          type: ["integer", "null"]
+        bidCount:
+          type: ["integer", "null"]
+        detailUrl:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: ["string", "null"]
+
+    AuctionListResponse:
+      type: object
+      required: [auctions, total, limit, offset]
+      properties:
+        auctions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Auction"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    AuctionSummary:
+      type: object
+      required: [totalAuctions, liveCount, preAuctionCount, endedCount, byState, priceTiers]
+      properties:
+        totalAuctions:
+          type: integer
+        liveCount:
+          type: integer
+        preAuctionCount:
+          type: integer
+        endedCount:
+          type: integer
+        byState:
+          type: array
+          items:
+            $ref: "#/components/schemas/StateCount"
+        priceTiers:
+          $ref: "#/components/schemas/PriceTiers"
+
+    StateCount:
+      type: object
+      required: [state, count]
+      properties:
+        state:
+          type: string
+        count:
+          type: integer
+
+    PriceTiers:
+      type: object
+      required: [tier1, tier2, tier3]
+      properties:
+        tier1:
+          type: integer
+          description: "$1k-$5k count"
+        tier2:
+          type: integer
+          description: "$400k-$1.4M count"
+        tier3:
+          type: integer
+          description: "$1.5M+ count"
+
+    Property:
+      type: object
+      required: [id, parcelNumber, state, county, spreadsheetType, createdAt]
+      properties:
+        id:
+          type: integer
+        parcelNumber:
+          type: string
+        state:
+          type: string
+        county:
+          type: string
+        ownerName:
+          type: ["string", "null"]
+        propertyAddress:
+          type: ["string", "null"]
+        propertyDescription:
+          type: ["string", "null"]
+        taxBillAmount:
+          type: ["number", "null"]
+        minimumBid:
+          type: ["number", "null"]
+        salePrice:
+          type: ["number", "null"]
+        excessProceeds:
+          type: ["number", "null"]
+        auctionDate:
+          type: ["string", "null"]
+        spreadsheetType:
+          type: string
+          enum: [pre_auction, post_auction]
+        spreadsheetId:
+          type: ["integer", "null"]
+        claimDeadline:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: ["string", "null"]
+
+    PropertyListResponse:
+      type: object
+      required: [properties, total, limit, offset]
+      properties:
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/Property"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Spreadsheet:
+      type: object
+      required: [id, type, state, county, year, month, status, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [pre_auction, post_auction]
+        state:
+          type: string
+        county:
+          type: string
+        year:
+          type: integer
+        month:
+          type: integer
+        sourceUrl:
+          type: ["string", "null"]
+        localPath:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, downloading, imported, failed]
+        propertyCount:
+          type: ["integer", "null"]
+        errorMessage:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: ["string", "null"]
+
+    SpreadsheetListResponse:
+      type: object
+      required: [spreadsheets, total]
+      properties:
+        spreadsheets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Spreadsheet"
+        total:
+          type: integer
+
+    SpreadsheetDownloadInput:
+      type: object
+      required: [type, state, county, year, month]
+      properties:
+        type:
+          type: string
+          enum: [pre_auction, post_auction]
+        state:
+          type: string
+        county:
+          type: string
+        year:
+          type: integer
+        month:
+          type: integer
+        sourceUrl:
+          type: string
+
+    SpreadsheetJob:
+      type: object
+      required: [jobId, status]
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+        message:
+          type: ["string", "null"]
+
+    SpiderStartInput:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [pre_auction, live_auction, post_auction]
+        states:
+          type: array
+          items:
+            type: string
+          description: State abbreviations to target (empty = all)
+        minBid:
+          type: ["number", "null"]
+        maxBid:
+          type: ["number", "null"]
+        propertyTypes:
+          type: array
+          items:
+            type: string
+            enum: [land, improved]
+
+    SpiderStatus:
+      type: object
+      required: [mode, running, pagesScanned, auctionsFound, startedAt]
+      properties:
+        mode:
+          type: ["string", "null"]
+          enum: [pre_auction, live_auction, post_auction, null]
+        running:
+          type: boolean
+        pagesScanned:
+          type: integer
+        auctionsFound:
+          type: integer
+        startedAt:
+          type: ["string", "null"]
+        completedAt:
+          type: ["string", "null"]
+        errorMessage:
+          type: ["string", "null"]
+        currentUrl:
+          type: ["string", "null"]
+
+    MonitoringSession:
+      type: object
+      required: [auctionId, active, startedAt]
+      properties:
+        auctionId:
+          type: integer
+        active:
+          type: boolean
+        startedAt:
+          type: ["string", "null"]
+        stoppedAt:
+          type: ["string", "null"]
+
+    MonitoringListResponse:
+      type: object
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonitoringSession"
+
+    LiveAuctionStatus:
+      type: object
+      required: [auctionId, currentBid, bidCount, timeRemainingSeconds, outbid, reserveMet]
+      properties:
+        auctionId:
+          type: integer
+        currentBid:
+          type: number
+        bidCount:
+          type: integer
+        timeRemainingSeconds:
+          type: integer
+        outbid:
+          type: boolean
+        reserveMet:
+          type: boolean
+        lastUpdatedAt:
+          type: string
+        recentBids:
+          type: array
+          items:
+            $ref: "#/components/schemas/BidEvent"
+
+    BidEvent:
+      type: object
+      required: [amount, timestamp]
+      properties:
+        amount:
+          type: number
+        timestamp:
+          type: string
+        bidder:
+          type: ["string", "null"]
+
+    ExcessProceeds:
+      type: object
+      required: [id, parcelNumber, state, county, salePrice, taxBillAmount, excessAmount, createdAt]
+      properties:
+        id:
+          type: integer
+        parcelNumber:
+          type: string
+        state:
+          type: string
+        county:
+          type: string
+        ownerName:
+          type: ["string", "null"]
+        propertyAddress:
+          type: ["string", "null"]
+        salePrice:
+          type: number
+        taxBillAmount:
+          type: number
+        excessAmount:
+          type: number
+        auctionDate:
+          type: ["string", "null"]
+        claimDeadline:
+          type: ["string", "null"]
+        claimed:
+          type: boolean
+        claimedAt:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: ["string", "null"]
+
+    ExcessProceedsListResponse:
+      type: object
+      required: [records, total, limit, offset]
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExcessProceeds"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    ExcessProceedsSummary:
+      type: object
+      required: [totalRecords, totalAmount, unclaimedAmount, unclaimedCount, byState]
+      properties:
+        totalRecords:
+          type: integer
+        totalAmount:
+          type: number
+        unclaimedAmount:
+          type: number
+        unclaimedCount:
+          type: integer
+        byState:
+          type: array
+          items:
+            $ref: "#/components/schemas/StateCount"
